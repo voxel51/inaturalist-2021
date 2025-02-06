@@ -19,6 +19,6 @@ splits:
  - test
 size_samples:
  - train: 2686843
- - train-mini: 500000 
+ - train-mini: 500000
  - test: 500000
  - validation: 100000
