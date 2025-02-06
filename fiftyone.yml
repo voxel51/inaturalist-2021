@@ -1,0 +1,24 @@
+name: voxel51/inaturalist-2021
+type: dataset
+author: Grant van Horn, Elijah Cole, Sara Beery, Kimberly Wilber, Serge Belongie, Oisin Mac Aodha
+version: 1.0.0
+url: https://github.com/visipedia/inat_comp/tree/master/2021
+source: https://www.inaturalist.org/
+license: https://github.com/visipedia/inat_comp/blob/master/LICENSE
+description: iNaturalist 2021 dataset
+fiftyone:
+  version: "*"
+supports_partial_downloads: false
+tags:
+ - image
+ - classification
+splits:
+ - train
+ - train-mini
+ - validation
+ - test
+size_samples:
+ - train: 2686843
+ - train-mini: 500000 
+ - test: 500000
+ - validation: 100000
