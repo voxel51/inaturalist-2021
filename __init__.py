@@ -107,7 +107,7 @@ def load_dataset(dataset, dataset_dir, split):
 def _add_classification_labels(dataset, labels, categories):
     coco_objects = []
     for d in labels:
-        # Add psuedo bbox for detection to classification conversion
+        # Add pseudo bbox for detection to classification conversion
         d["bbox"] = [0, 0, 0, 0]
         coco_obj = COCOObject.from_anno_dict(d)
         coco_objects.append([coco_obj])
