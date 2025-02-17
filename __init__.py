@@ -101,7 +101,9 @@ def load_dataset(dataset, dataset_dir, split):
 
     labels_json = os.path.join(split_dir, "labels.json")
     labels = etas.load_json(labels_json)
-    _add_classification_labels(dataset, labels=labels["annotations"])
+    _add_classification_labels(
+        dataset, labels=labels["annotations"], categories=labels["categories"]
+    )
 
 
 def _add_classification_labels(dataset, labels, categories):
