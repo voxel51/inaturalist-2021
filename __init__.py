@@ -15,6 +15,7 @@ import eta.core.web as etaw
 import eta.core.utils as etau
 from fiftyone.utils.coco import COCOObject, parse_coco_categories
 import eta.core.serial as etas
+import fiftyone.core.storage as fos
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ def download_and_prepare(dataset_dir, split):
     dataset_type = None
     split_data_dir = os.path.join(dataset_dir, split, "data")
     num_samples = len(etau.list_files(split_data_dir, recursive=True))
-    classes = len(etau.list_subdirs(split_data_dir, recursive=True)) - 1
+    classes = etau.list_subdirs(split_data_dir, recursive=True)[1:]
 
     shutil.rmtree(scratch_dir, ignore_errors=True)
     shutil.rmtree(os.path.join(dataset_dir, "__pycache__"), ignore_errors=True)
@@ -93,16 +94,7 @@ def load_dataset(dataset, dataset_dir, split):
             ``("train", "train-mini", "validation", "test")``
     """
     split_dir = os.path.join(dataset_dir, split)
-
-    # TODO: Add COCOClassificationDataset to fiftyone for datasets with
-    # COCO-styled classification labels.
-    tmp_field = dataset.make_unique_field_name("tmp")
-    dataset.add_dir(
-        dataset_dir=split_dir,
-        dataset_type=fo.types.COCODetectionDataset,
-        label_field=tmp_field,
-        tags=split,
-    )
+    data_path = os.path.join(fos.normalize_path(split_dir), "data")
 
     labels_json = os.path.join(split_dir, "labels.json")
     labels = etas.load_json(labels_json)
@@ -110,17 +102,20 @@ def load_dataset(dataset, dataset_dir, split):
         labels
     )
 
-    classification_labels = []
+    samples = []
     for image_id in images:
+        image = images[image_id]
         coco_object = annotations[image_id]
-        _classification = fo.Classification(
-            label=classes_map[coco_object.category_id]
+        file_path = os.path.join(data_path, fos.normpath(image["file_name"]))
+        samples.append(
+            fo.Sample(
+                filepath=file_path,
+                ground_truth=fo.Classification(
+                    label=classes_map[coco_object.category_id]
+                ),
+            )
         )
-        classification_labels.append(_classification)
-    dataset.set_values("ground_truth", classification_labels)
-
-    if dataset.has_sample_field(tmp_field):
-        dataset.delete_sample_field(tmp_field)
+    dataset.add_samples(samples)
 
 
 def _parse_coco_classification_annotations(d):
