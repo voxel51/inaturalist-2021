@@ -11,10 +11,9 @@ import os
 import shutil
 
 import fiftyone as fo
-
 import eta.core.web as etaw
 import eta.core.utils as etau
-from fiftyone.utils.coco import COCOObject, _coco_objects_to_detections
+from fiftyone.utils.coco import COCOObject, parse_coco_categories
 import eta.core.serial as etas
 
 logger = logging.getLogger(__name__)
@@ -94,42 +93,62 @@ def load_dataset(dataset, dataset_dir, split):
             ``("train", "train-mini", "validation", "test")``
     """
     split_dir = os.path.join(dataset_dir, split)
+
+    # TODO: Add COCODetectionDataset to fiftyone and use that here.
+    tmp_field = dataset.make_unique_field_name("tmp")
     dataset.add_dir(
         dataset_dir=split_dir,
         dataset_type=fo.types.COCODetectionDataset,
+        label_field=tmp_field,
+        tags=split,
     )
 
     labels_json = os.path.join(split_dir, "labels.json")
     labels = etas.load_json(labels_json)
-    _add_classification_labels(
-        dataset, labels=labels["annotations"], categories=labels["categories"]
+    classes_map, images, annotations = _parse_coco_classification_annotations(
+        labels
     )
 
-
-def _add_classification_labels(dataset, labels, categories):
-    coco_objects = []
-    for d in labels:
-        # Add pseudo bbox for detection to classification conversion
-        d["bbox"] = [0, 0, 0, 0]
-        coco_obj = COCOObject.from_anno_dict(d)
-        coco_objects.append([coco_obj])
-
-    dataset.compute_metadata()
-    widths, heights = dataset.values(["metadata.width", "metadata.height"])
-    classes_map = {c["id"]: c["name"] for c in categories}
-
     classification_labels = []
-    for _coco_objects, width, height in zip(coco_objects, widths, heights):
-        frame_size = (width, height)
-        _detections = _coco_objects_to_detections(
-            _coco_objects, frame_size, classes_map, None, False, False
+    for image_id in images:
+        coco_object = annotations[image_id]
+        _classification = fo.Classification(
+            label=classes_map[coco_object.category_id]
         )
-        for det in _detections["detections"]:
-            _classification = fo.Classification(
-                label=det.label, confidence=det.confidence
-            )
-            classification_labels.append(_classification)
+        classification_labels.append(_classification)
     dataset.set_values("ground_truth", classification_labels)
+
+    if dataset.has_sample_field(tmp_field):
+        dataset.delete_sample_field(tmp_field)
+
+
+def _parse_coco_classification_annotations(d):
+    categories = d.get("categories", None)
+    # Load classes
+    if categories is not None:
+        classes_map, _ = parse_coco_categories(categories)
+    else:
+        classes_map = None
+
+    # Load image metadata
+    images = {i["id"]: i for i in d.get("images", [])}
+
+    # Load annotations
+    _annotations = d.get("annotations", None)
+    if _annotations is not None:
+        annotations = {}
+        for a in _annotations:
+            if a["image_id"] in annotations:
+                raise Exception(
+                    f"{a['image_id']} has more than one classification label."
+                )
+            annotations[a["image_id"]] = COCOObject.from_anno_dict(a)
+
+        annotations = dict(annotations)
+    else:
+        annotations = None
+
+    return classes_map, images, annotations
 
 
 def _download_archive(url, archive_path, overwrite=False):
