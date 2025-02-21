@@ -94,7 +94,8 @@ def load_dataset(dataset, dataset_dir, split):
     """
     split_dir = os.path.join(dataset_dir, split)
 
-    # TODO: Add COCODetectionDataset to fiftyone and use that here.
+    # TODO: Add COCOClassificationDataset to fiftyone for datasets with
+    # COCO-styled classification labels.
     tmp_field = dataset.make_unique_field_name("tmp")
     dataset.add_dir(
         dataset_dir=split_dir,
