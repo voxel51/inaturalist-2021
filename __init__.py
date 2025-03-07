@@ -105,14 +105,17 @@ def load_dataset(dataset, dataset_dir, split):
     samples = []
     for image_id in images:
         image = images[image_id]
-        coco_object = annotations[image_id]
+        ground_truth = None
+        if annotations:
+            coco_object = annotations[image_id]
+            ground_truth = fo.Classification(
+                label=classes_map[coco_object.category_id]
+            )
         file_path = os.path.join(data_path, fos.normpath(image["file_name"]))
         samples.append(
             fo.Sample(
                 filepath=file_path,
-                ground_truth=fo.Classification(
-                    label=classes_map[coco_object.category_id]
-                ),
+                ground_truth=ground_truth,
             )
         )
     dataset.add_samples(samples)
